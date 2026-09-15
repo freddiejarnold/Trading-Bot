@@ -52,10 +52,10 @@ class BotConfig:
     # 20 shorts — structural downtrends, negative 12m momentum, liquid enough
     # to borrow without hard-to-borrow fees on Alpaca
     short_universe: list = field(default_factory=lambda: [
-        "INTC", "BA",   "WBA",  "PFE",  "T",
-        "VZ",   "MO",   "CVS",  "KHC",  "PARA",
-        "DIS",  "NKE",  "MPW",  "CELH", "PLUG",
-        "BYND", "RIVN", "LCID", "XPEV", "SMCI",
+        "INTC", "BA",   "PFE",  "T",    "VZ",
+        "MO",   "CVS",  "KHC",  "PARA", "DIS",
+        "NKE",  "CELH", "PLUG", "BYND", "RIVN",
+        "LCID", "XPEV", "SMCI", "WOLF", "RIDE",
     ])
 
     sector_etfs: list = field(default_factory=lambda: [
