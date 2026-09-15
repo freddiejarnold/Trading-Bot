@@ -205,18 +205,18 @@ def _score_universe(
         id_ok = (np.isnan(id_score) or id_score < 0.2) if side == "long" else True
 
         # Long-specific quality gates
+        # Trend template relaxed to 6/9 conditions (not all 9) — avoids
+        # filtering out the entire universe on any given day
         if side == "long":
             passes_quality = (
-                tt["passes"] and
+                tt["conditions_met"] >= 6 and
                 id_ok and
-                (np.isnan(vol_r) or vol_r >= 1.2) and
                 not np.isnan(primary)
             )
         else:  # short
             passes_quality = (
-                not tt["passes"] and         # failing trend template = downtrend
-                (np.isnan(vol_r) or vol_r >= 1.2) and
-                (np.isnan(raw_mom) or raw_mom < -0.10) and
+                tt["conditions_met"] <= 3 and   # clearly failing trend template
+                (np.isnan(raw_mom) or raw_mom < -0.05) and
                 not np.isnan(primary)
             )
 
