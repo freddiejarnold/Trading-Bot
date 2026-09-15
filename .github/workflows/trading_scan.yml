@@ -1,0 +1,80 @@
+# trading_scan.yml
+# Runs three scans per US trading day. No server needed — GitHub handles scheduling.
+# All secrets set via: GitHub repo → Settings → Secrets and variables → Actions
+
+name: Trading scan
+
+on:
+  schedule:
+    # Times in UTC. US Eastern = UTC-4 (summer/BST) or UTC-5 (winter/GMT)
+    # These match 9:45am, 12:30pm, 2:45pm ET year-round (adjust ±1hr in winter)
+    - cron: '45 13 * * 1-5'   # 9:45 AM ET (summer UTC-4)
+    - cron: '30 16 * * 1-5'   # 12:30 PM ET
+    - cron: '45 18 * * 1-5'   # 2:45 PM ET
+    # Weekly review — Sunday 6pm ET
+    - cron: '0 22 * * 0'
+    # Monthly dual-momentum signal — first Monday 9am ET
+    - cron: '0 13 1-7 * 1'
+
+  # Run manually from GitHub Actions tab (for testing)
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Scan type'
+        required: false
+        default: 'full'
+        type: choice
+        options: [full, weekly_review, dual_mom]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore state files
+        # Loads position_state.json and state.json from previous runs
+        uses: actions/cache@v4
+        with:
+          path: |
+            state.json
+            position_state.json
+          key: bot-state-${{ github.run_id }}
+          restore-keys: |
+            bot-state-
+
+      - name: Run scan
+        run: python run_scan.py
+        env:
+          ALPACA_API_KEY:     ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY:  ${{ secrets.ALPACA_SECRET_KEY }}
+          ALPACA_BASE_URL:    https://paper-api.alpaca.markets
+          FINNHUB_KEY:        ${{ secrets.FINNHUB_KEY }}
+          ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          SCAN_TYPE:          ${{ github.event.inputs.scan_type || 'full' }}
+
+      - name: Save state files
+        # Persists state between runs using GitHub Actions cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: |
+            state.json
+            position_state.json
+          key: bot-state-${{ github.run_id }}
