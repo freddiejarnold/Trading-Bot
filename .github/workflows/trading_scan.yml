@@ -1,22 +1,24 @@
-# trading_scan.yml
-# Runs three scans per US trading day. No server needed — GitHub handles scheduling.
-# All secrets set via: GitHub repo → Settings → Secrets and variables → Actions
-
 name: Trading scan
 
 on:
   schedule:
-    # Times in UTC. US Eastern = UTC-4 (summer/BST) or UTC-5 (winter/GMT)
-    # These match 9:45am, 12:30pm, 2:45pm ET year-round (adjust ±1hr in winter)
-    - cron: '45 13 * * 1-5'   # 9:45 AM ET (summer UTC-4)
-    - cron: '30 16 * * 1-5'   # 12:30 PM ET
-    - cron: '45 18 * * 1-5'   # 2:45 PM ET
-    # Weekly review — Sunday 6pm ET
+    # All times UTC. BST = UTC+1 (summer), GMT = UTC+0 (winter)
+    # ── Morning brief — 9:00 AM ET = 2:00 PM BST ──
+    - cron: '0 13 * * 1-5'
+    # ── Scans every 45 min during market hours ──
+    - cron: '45 13 * * 1-5'   # 9:45 AM ET  (open)
+    - cron: '30 14 * * 1-5'   # 10:30 AM ET
+    - cron: '15 15 * * 1-5'   # 11:15 AM ET
+    - cron: '0 16 * * 1-5'    # 12:00 PM ET
+    - cron: '45 16 * * 1-5'   # 12:45 PM ET
+    - cron: '30 17 * * 1-5'   # 1:30 PM ET
+    - cron: '15 18 * * 1-5'   # 2:15 PM ET
+    - cron: '45 18 * * 1-5'   # 2:45 PM ET  (pre-close)
+    # ── Weekly review — Sunday 6 PM ET ──
     - cron: '0 22 * * 0'
-    # Monthly dual-momentum signal — first Monday 9am ET
+    # ── Monthly dual momentum — first Monday 9 AM ET ──
     - cron: '0 13 1-7 * 1'
 
-  # Run manually from GitHub Actions tab (for testing)
   workflow_dispatch:
     inputs:
       scan_type:
@@ -24,7 +26,7 @@ on:
         required: false
         default: 'full'
         type: choice
-        options: [full, weekly_review, dual_mom]
+        options: [full, morning_brief, weekly_review, dual_mom]
 
 jobs:
   scan:
@@ -47,7 +49,6 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Restore state files
-        # Loads position_state.json and state.json from previous runs
         uses: actions/cache@v4
         with:
           path: |
@@ -73,7 +74,6 @@ jobs:
           SCAN_TYPE:          ${{ github.event.inputs.scan_type || 'full' }}
 
       - name: Save state files
-        # Persists state between runs using GitHub Actions cache
         uses: actions/cache/save@v4
         if: always()
         with:
