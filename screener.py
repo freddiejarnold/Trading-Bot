@@ -197,27 +197,39 @@ def _score_universe(
 
         price = float(df["Close"].squeeze().iloc[-1])
 
-        # Primary score: residual mom if available, else vol-adjusted
-        primary = res_score if not np.isnan(res_score) else vol_adj_mom
+        # Primary score: residual mom -> vol-adjusted -> raw momentum (cascade)
+        # Ensures we always have a score even when FF3 data is insufficient
+        if not np.isnan(res_score):
+            primary = res_score
+        elif not np.isnan(vol_adj_mom):
+            primary = vol_adj_mom
+        elif not np.isnan(raw_mom):
+            primary = raw_mom
+        else:
+            primary = np.nan
 
-        # ID filter: keep only continuous-momentum candidates (Da et al)
-        # Low ID = gradual info = stronger signal. Exclude top-third of ID for longs.
+        # Debug: print every ticker so we can see what is scoring
+        res_str = f"{res_score:.3f}" if not np.isnan(res_score) else "NaN"
+        vol_str = f"{vol_adj_mom:.3f}" if not np.isnan(vol_adj_mom) else "NaN"
+        raw_str = f"{raw_mom:.3f}" if not np.isnan(raw_mom) else "NaN"
+        pri_str = f"{primary:.3f}" if not np.isnan(primary) else "NaN"
+        print(f"  {ticker}: res={res_str} vol={vol_str} raw={raw_str} tt={tt['conditions_met']}/9 primary={pri_str}")
+
+        # ID filter
         id_ok = (np.isnan(id_score) or id_score < 0.2) if side == "long" else True
 
-        # Long-specific quality gates
-        # Trend template relaxed to 6/9 conditions (not all 9) — avoids
-        # filtering out the entire universe on any given day
+        # Quality gates — relaxed to 5/9 trend template conditions
         if side == "long":
             passes_quality = (
-                tt["conditions_met"] >= 6 and
+                tt["conditions_met"] >= 5 and
                 id_ok and
                 not np.isnan(primary)
             )
-        else:  # short
+        else:
             passes_quality = (
-                tt["conditions_met"] <= 3 and   # clearly failing trend template
-                (np.isnan(raw_mom) or raw_mom < -0.05) and
-                not np.isnan(primary)
+                tt["conditions_met"] <= 4 and
+                not np.isnan(primary) and
+                (np.isnan(raw_mom) or raw_mom < 0.0)
             )
 
         if not passes_quality:
