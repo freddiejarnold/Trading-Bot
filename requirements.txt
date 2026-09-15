@@ -1,0 +1,14 @@
+# Zero paid APIs — all free except Anthropic (~£0.50/mo)
+anthropic>=0.40.0        # Claude Haiku — research notes only, not order path
+alpaca-py>=0.26.0        # Free basic tier: paper trading + IEX real-time
+alpaca-trade-api>=3.0.0  # Legacy SDK for bracket orders
+yfinance>=0.2.40         # Free historical OHLCV, VIX, SPY
+finnhub-python>=2.4.0    # Free tier: 60 req/min, news sentiment
+pandas>=2.0.0
+numpy>=1.26.0
+scipy>=1.12.0            # For deflated Sharpe + FF3 regression
+ta>=0.11.0               # Technical indicators
+apscheduler>=3.10.0      # Job scheduling (free)
+python-telegram-bot>=20.0  # Telegram bot (free)
+python-dotenv>=1.0.0
+websocket-client>=1.7.0  # Finnhub WebSocket (free)
