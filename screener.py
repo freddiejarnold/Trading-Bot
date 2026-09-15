@@ -30,24 +30,67 @@ from signals import (
     volume_ratio,
 )
 
-# ── Fama-French factor proxy (free via yfinance ETFs) ────────────────────────
-# For residual momentum we need MKT, SMB, HML.
-# True FF data needs Ken French library or WRDS (free at Warwick — check).
-# Proxy: MKT = SPY returns, SMB = IWM-SPY, HML = IVE-IVW
-# Close enough for signal ranking; won't match the paper's exact numbers.
+# ── Fama-French factors — Ken French daily data (actual, not proxies) ─────────
+# File: F-F_Research_Data_Factors_daily.txt (committed to repo root)
+# Download from: mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html
+# "Fama/French 3 Factors [Daily]" → unzip → commit the .txt file
+# Data runs 1926–present, updated quarterly by French.
+# This replaces the ETF proxy approach and gives accurate MKT, SMB, HML.
+
+FF_FILE = "F-F_Research_Data_Factors_daily.txt"
 
 def _load_ff_proxies(period: str = "5y") -> tuple[pd.Series, pd.Series, pd.Series]:
-    """Load free Fama-French factor proxies from yfinance."""
+    """
+    Load Ken French daily factors from committed txt file.
+    Falls back to ETF proxies if file not found.
+    """
+    if os.path.exists(FF_FILE):
+        return _load_ff_french(FF_FILE)
+    else:
+        print("  Warning: FF data file not found, using ETF proxies")
+        return _load_ff_etf_proxies()
+
+
+def _load_ff_french(filepath: str) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """Parse Ken French daily factors txt file."""
+    rows = []
+    with open(filepath, "r") as f:
+        for line in f:
+            line = line.strip()
+            # Only process lines starting with an 8-digit date
+            if len(line) >= 8 and line[:8].isdigit():
+                parts = line.split()
+                if len(parts) == 5:
+                    rows.append(parts)
+
+    df = pd.DataFrame(rows, columns=["date", "Mkt_RF", "SMB", "HML", "RF"])
+    df["date"] = pd.to_datetime(df["date"], format="%Y%m%d")
+    df = df.set_index("date")
+    df = df.astype(float) / 100.0   # percent → decimal
+
+    # Keep last 6 years (enough for FF3 regression window)
+    cutoff = pd.Timestamp.now() - pd.Timedelta(days=365 * 6)
+    df = df[df.index >= cutoff]
+
+    # MKT total return = Mkt-RF + RF
+    mkt = df["Mkt_RF"] + df["RF"]
+    smb = df["SMB"]
+    hml = df["HML"]
+
+    print(f"  FF data loaded: {len(df)} days, {df.index[0].date()} to {df.index[-1].date()}")
+    return mkt, smb, hml
+
+
+def _load_ff_etf_proxies() -> tuple[pd.Series, pd.Series, pd.Series]:
+    """Fallback: ETF-based FF proxies via yfinance."""
     tickers = ["SPY", "IWM", "IVE", "IVW"]
-    raw = yf.download(tickers, period=period, interval="1d", progress=False)["Close"]
+    raw = yf.download(tickers, period="5y", interval="1d", progress=False)["Close"]
     if raw.empty:
         return None, None, None
-
     spy = raw["SPY"].pct_change()
-    mkt = spy                                          # market factor
-    smb = raw["IWM"].pct_change() - spy                # small minus big proxy
-    hml = raw["IVE"].pct_change() - raw["IVW"].pct_change()  # value minus growth proxy
-
+    mkt = spy
+    smb = raw["IWM"].pct_change() - spy
+    hml = raw["IVE"].pct_change() - raw["IVW"].pct_change()
     return mkt.dropna(), smb.dropna(), hml.dropna()
 
 
