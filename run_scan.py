@@ -33,6 +33,7 @@ from screener import run_full_scan, dual_momentum_signal
 from executor import execute, pick_best_candidate, get_account_value, _vp
 from risk     import check_circuit_breakers, load_state, save_state, record_daily_return
 from analyst  import weekly_review, flag_anomaly
+from logger   import log_trade, log_regime, check_and_close_positions
 
 import asyncio, httpx
 
@@ -208,9 +209,17 @@ if not regime["market_state_ok"]:
     send(f"⏸ Market state negative — no new positions today")
     sys.exit(0)
 
+# Check if any bracket orders closed since last scan
+check_and_close_positions()
+
 # Deterministic order selection
 best   = pick_best_candidate(scan)
 result = execute(best, size_scalar=scan.get("size_scalar", 1.0))
+
+# Log to dashboard
+log_regime(scan, regime)
+if result.get("executed") and best:
+    log_trade(result, best)
 
 # Fetch current positions to include in notification
 positions, account = get_alpaca_positions()
