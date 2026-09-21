@@ -33,12 +33,39 @@ def get_account_value() -> float:
     return float(api.get_account().equity)
 
 
+def get_open_positions() -> dict:
+    """
+    Fetch currently open positions from Alpaca paper account.
+    Returns {ticker: position_dict}. Used to prevent duplicate entries.
+    """
+    if CFG.mode == "virtual":
+        return _vp.get("positions", {})
+    try:
+        api = _get_alpaca()
+        positions = api.list_positions()
+        return {p.symbol: p for p in positions}
+    except Exception as e:
+        print(f"Warning: could not fetch positions: {e}")
+        return {}
+
+
 def pick_best_candidate(candidates: dict) -> dict | None:
     """
-    § supplement §4: this replaces `analyze_with_claude(candidates)`.
-    Pure deterministic selection — highest primary_score long or lowest short.
-    Claude never touches this path.
+    § supplement §4: pure deterministic selection.
+    Now also checks open positions to prevent duplicate entries in the same ticker
+    and enforces max_positions limit.
     """
+    # Fetch what's already open on Alpaca
+    open_positions = get_open_positions()
+    n_open = len(open_positions)
+
+    print(f"  Open positions: {n_open}/{CFG.max_positions} — {list(open_positions.keys())}")
+
+    # Hard stop: never exceed max_positions
+    if n_open >= CFG.max_positions:
+        print(f"  Max positions reached ({CFG.max_positions}) — no new entry")
+        return None
+
     longs  = candidates.get("long", [])
     shorts = candidates.get("short", [])
     all_c  = longs + shorts
@@ -51,8 +78,16 @@ def pick_best_candidate(candidates: dict) -> dict | None:
     if not viable:
         return None
 
+    # Filter: skip any ticker already held (prevents stacking brackets)
+    viable = [c for c in viable if c["ticker"] not in open_positions]
+    if not viable:
+        print(f"  All candidates already held — no new entry")
+        return None
+
     # Primary: highest |score|, filtered by side
-    # Longs: highest positive score; Shorts: most negative score
+    longs  = [c for c in viable if c["side"] == "long"]
+    shorts = [c for c in viable if c["side"] == "short"]
+
     if CFG.direction in ("long", "both") and longs:
         best_long = max(longs, key=lambda x: x["primary_score"])
     else:
