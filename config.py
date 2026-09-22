@@ -87,6 +87,13 @@ class BotConfig:
     vix_rank_secondary_threshold:  float = 80.0
     require_positive_market_state: bool  = True
 
+    # ── Pyramiding / position building ────────────────────────────────────────────
+    # Controlled adding to winning positions (Livermore / Van Tharp pyramid rules)
+    max_tranches:           int   = 3      # max entries per ticker (initial + 2 add-ons)
+    max_ticker_risk_pct:    float = 0.03   # max 3% total portfolio risk per ticker
+    max_ticker_notional_pct: float = 0.15  # max 15% notional allocation per ticker
+    # Each add-on halves the risk: 1% → 0.5% → 0.25%
+
     # ── PDT rule guard ─────────────────────────────────────────────────────────
     min_holding_days: int = 1
 
