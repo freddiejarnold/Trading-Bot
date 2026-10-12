@@ -1,16 +1,39 @@
 {
-  "trades": [],
+  "trades": [
+    {
+      "id": "trade_20261012_134647",
+      "ticker": "ARM",
+      "side": "long",
+      "entry": 261.1,
+      "stop": 243.4,
+      "take_profit": 287.64,
+      "shares": 49,
+      "risk_dollars": 867.3,
+      "entry_date": "2026-10-12",
+      "status": "open",
+      "mode": "paper",
+      "port_weight": 0.942,
+      "primary_score": 0.6514,
+      "tt_conditions": 7,
+      "pnl": null,
+      "r_multiple": null,
+      "exit_price": null,
+      "exit_date": null,
+      "exit_reason": null,
+      "created_at": "2026-10-12T13:46:47.044866"
+    }
+  ],
   "regime": [
     {
       "date": "2026-10-12",
       "market_state_ok": true,
-      "vix_rank": 20.2,
+      "vix_rank": 17.1,
       "vix_secondary_block": false,
       "n_long_candidates": 4,
       "n_short_candidates": 0,
       "size_scalar": 1.0,
-      "timestamp": "2026-10-12T13:01:46.221582"
+      "timestamp": "2026-10-12T13:46:47.044437"
     }
   ],
-  "last_updated": "2026-10-12T13:01:46.221589"
+  "last_updated": "2026-10-12T13:46:47.044870"
 }
