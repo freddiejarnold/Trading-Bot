@@ -32,19 +32,24 @@ from executor import get_open_positions, close_position
 async def _send_async(msg: str):
     token   = CFG.telegram_token   or os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = CFG.telegram_chat_id or os.environ.get("TELEGRAM_CHAT_ID", "")
+    token_preview   = f"{token[:6]}…{token[-4:]}" if len(token) > 10 else repr(token)
+    chat_id_preview = repr(chat_id) if not chat_id else chat_id
     if not token or not chat_id:
+        print(f"[Telegram SKIPPED] token={token_preview} chat_id={chat_id_preview}")
         print(f"[Telegram] {msg}")
         return
+    print(f"[Telegram] Sending… token={token_preview} chat_id={chat_id_preview}")
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     async with httpx.AsyncClient() as client:
         try:
-            await client.post(url, json={
+            r = await client.post(url, json={
                 "chat_id":    chat_id,
                 "text":       msg,
                 "parse_mode": "Markdown",
             }, timeout=10)
+            print(f"[Telegram] Response: {r.status_code} {r.text[:200]}")
         except Exception as e:
-            print(f"Telegram error: {e}")
+            print(f"[Telegram] Error: {e}")
 
 
 def _send(msg: str):
