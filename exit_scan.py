@@ -42,11 +42,11 @@ async def _send_async(msg: str):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     async with httpx.AsyncClient() as client:
         try:
-            # Send without parse_mode to avoid Markdown parse errors
-            # (reason strings contain < > which break Telegram's parser)
+            # HTML parse mode — safe as long as dynamic text is escaped with _h()
             r = await client.post(url, json={
-                "chat_id": chat_id,
-                "text":    msg,
+                "chat_id":    chat_id,
+                "text":       msg,
+                "parse_mode": "HTML",
             }, timeout=10)
             print(f"[Telegram] Response: {r.status_code} {r.text[:200]}")
         except Exception as e:
@@ -216,19 +216,53 @@ def run_exit_scan(dry_run: bool = False) -> dict:
             print(f"  ✓ HOLD {ticker}")
 
     # ── Telegram summary ──────────────────────────────────────────────────────
+    def _h(s: str) -> str:
+        """Escape a string for Telegram HTML mode."""
+        return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
     if exits:
-        lines = [f"🔴 *Weekly Exit Scan* — {len(exits)} position(s) closed{'(DRY RUN)' if dry_run else ''}\n"]
+        lines = [
+            f"🔴 <b>Weekly Exit Scan</b>{'  [DRY RUN]' if dry_run else ''}\n"
+            f"<i>Residual momentum signal review — {datetime.datetime.utcnow().strftime('%d %b %Y')}</i>\n"
+        ]
         for e in exits:
-            pct   = e.get("unrealized_plpc", 0) or 0
-            emoji = "🟢" if pct >= 0 else "🔴"
-            lines.append(f"{emoji} *{e['ticker']}*: {pct:+.1f}% | _{e['reason']}_")
+            pct      = e.get("unrealized_plpc", 0) or 0
+            pl_emoji = "📈" if pct >= 0 else "📉"
+            rank     = e.get("rank_pct")
+            days     = e.get("days_held", 0)
+
+            # Human-readable exit reason
+            reasons = []
+            if rank is not None and rank < exit_threshold:
+                reasons.append(f"momentum rank fell to bottom {100 - int(rank * 100)}% of universe (rank {rank:.2f})")
+            if days > hold_days_max:
+                reasons.append(f"held {days} trading days (max {hold_days_max})")
+            if not reasons:
+                reasons.append(_h(e["reason"]))
+            reason_str = " + ".join(reasons)
+
+            lines.append(
+                f"\n{pl_emoji} <b>{_h(e['ticker'])}</b>  {pct:+.1f}% P&L\n"
+                f"   Closed: {reason_str}\n"
+                f"   Thesis: momentum signal has faded — holding further risks mean-reversion loss"
+            )
         if held:
-            lines.append(f"\n✅ Still held: {', '.join(held)}")
+            lines.append(f"\n✅ <b>Still held:</b> {', '.join(held)}")
+            lines.append("<i>These positions remain in the top third of the momentum universe.</i>")
         _send("\n".join(lines))
     else:
+        held_details = []
+        for t in held:
+            s = scores.get(t, {})
+            rank = s.get("rank_pct", None)
+            rank_str = f"rank {rank:.2f}" if rank is not None else "ranked"
+            held_details.append(f"{t} ({rank_str})")
         _send(
-            f"✅ *Weekly Exit Scan* — all {len(held)} position(s) pass\n"
-            f"Held: {', '.join(held)}"
+            f"✅ <b>Weekly Exit Scan</b>\n"
+            f"<i>{datetime.datetime.utcnow().strftime('%d %b %Y')}</i>\n\n"
+            f"All {len(held)} position(s) pass — momentum signals still strong.\n\n"
+            f"<b>Held:</b> {', '.join(held_details)}\n"
+            f"<i>Next exit check: Sunday.</i>"
         )
 
     return {"exits": exits, "held": held}
