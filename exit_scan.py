@@ -42,10 +42,11 @@ async def _send_async(msg: str):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     async with httpx.AsyncClient() as client:
         try:
+            # Send without parse_mode to avoid Markdown parse errors
+            # (reason strings contain < > which break Telegram's parser)
             r = await client.post(url, json={
-                "chat_id":    chat_id,
-                "text":       msg,
-                "parse_mode": "Markdown",
+                "chat_id": chat_id,
+                "text":    msg,
             }, timeout=10)
             print(f"[Telegram] Response: {r.status_code} {r.text[:200]}")
         except Exception as e:

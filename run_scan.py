@@ -46,9 +46,8 @@ async def _send(msg: str):
     async with httpx.AsyncClient() as client:
         try:
             await client.post(url, json={
-                "chat_id":    cfg.telegram_chat_id,
-                "text":       msg,
-                "parse_mode": "Markdown",
+                "chat_id": cfg.telegram_chat_id,
+                "text":    msg,
             }, timeout=10)
         except Exception as e:
             print(f"Telegram error: {e}")
