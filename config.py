@@ -76,10 +76,14 @@ class BotConfig:
 
     # ── Risk controls ──────────────────────────────────────────────────────────
     risk_per_trade_pct:     float = 0.01   # 1% portfolio risk per trade
-    atr_stop_multiplier:    float = 2.0
-    rr_target:              float = 2.0
-    max_positions:          int   = 8      # slightly higher with bigger universe
+    atr_stop_multiplier:    float = 1.0    # CHANGED from 2.0 — tighter stops, faster exits
+    rr_target:              float = 1.5    # CHANGED from 2.0 — 1.5R TP
+    max_positions:          int   = 5      # CHANGED from 8 — focus on best signals
     max_portfolio_risk_pct: float = 0.20
+
+    # ── Hold period cap (Novy-Marx & Velikov 2016: momentum decays fast) ────────
+    hold_days_max:          int   = 15     # NEW — hard cap in trading days
+    exit_rank_threshold:    float = 0.33   # exit if rank_pct drops below top-33%
 
     # ── Circuit breakers ───────────────────────────────────────────────────────
     daily_loss_limit_pct:          float = 0.02

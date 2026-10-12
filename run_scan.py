@@ -70,7 +70,14 @@ def get_alpaca_positions() -> list:
         return [], None
 
 # ── Determine scan type ───────────────────────────────────────────────────────
-scan_type = os.environ.get("SCAN_TYPE", "full")
+import argparse
+_parser = argparse.ArgumentParser(add_help=False)
+_parser.add_argument("--scan_type", default=None)
+_parser.add_argument("--dry_run", action="store_true")
+_args, _ = _parser.parse_known_args()
+
+scan_type = _args.scan_type or os.environ.get("SCAN_TYPE", "full")
+dry_run   = _args.dry_run
 now_utc   = datetime.utcnow()
 hour_utc  = now_utc.hour
 min_utc   = now_utc.minute
@@ -89,6 +96,15 @@ print(f"Run: {scan_type.upper()} | {now_utc.strftime('%Y-%m-%d %H:%M UTC')}")
 print(f"Mode: {cfg.mode} | Strategy: {cfg.primary_strategy}")
 print(f"Universe: {len(cfg.long_universe)} longs, {len(cfg.short_universe)} shorts")
 print(f"{'='*60}\n")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WEEKLY EXIT SCAN
+# ─────────────────────────────────────────────────────────────────────────────
+if scan_type == "weekly_exit":
+    from exit_scan import run_exit_scan
+    result = run_exit_scan(dry_run=dry_run)
+    print(f"\nResult: {json.dumps(result, indent=2, default=str)}")
+    sys.exit(0)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MORNING BRIEF

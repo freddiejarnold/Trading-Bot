@@ -49,6 +49,45 @@ def get_open_positions() -> dict:
         return {}
 
 
+def close_position(ticker: str, reason: str = "signal exit") -> dict:
+    """
+    Close an open position immediately at market.
+    For bracket orders: cancels pending stop/TP legs first, then market-closes.
+
+    Returns dict with result status.
+    """
+    if CFG.mode == "virtual":
+        pos = _vp["positions"].pop(ticker, None)
+        if pos:
+            _vp["cash"] += pos["shares"] * pos.get("current_price", pos["entry"])
+            return {"closed": True, "ticker": ticker, "reason": reason, "mode": "virtual"}
+        return {"closed": False, "ticker": ticker, "reason": "not found in virtual portfolio"}
+
+    api = _get_alpaca()
+
+    # Cancel any open bracket legs (stop loss / take profit) for this ticker
+    try:
+        open_orders = api.list_orders(status="open", symbols=[ticker])
+        for order in open_orders:
+            try:
+                api.cancel_order(order.id)
+                print(f"  Cancelled order {order.id} ({order.type}) for {ticker}")
+            except Exception as e:
+                print(f"  Warning: could not cancel order {order.id}: {e}")
+    except Exception as e:
+        print(f"  Warning: could not list orders for {ticker}: {e}")
+
+    # Close the position at market
+    try:
+        api.close_position(ticker)
+        print(f"  Closed {ticker}: {reason}")
+        _clear_tranche(ticker)
+        return {"closed": True, "ticker": ticker, "reason": reason}
+    except Exception as e:
+        print(f"  ERROR closing {ticker}: {e}")
+        return {"closed": False, "ticker": ticker, "reason": str(e)}
+
+
 def _get_ticker_risk_pct(ticker: str, equity: float, open_positions: dict) -> float:
     """
     Calculate total current risk percentage for a ticker across all open positions.

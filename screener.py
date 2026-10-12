@@ -304,6 +304,59 @@ def _score_universe(
     return results
 
 
+def rank_universe(return_all: bool = False) -> dict:
+    """
+    Score and rank every ticker in the combined universe.
+    Used by exit_scan.py to check current rank_pct for all open positions.
+
+    Parameters
+    ----------
+    return_all : bool
+        If True, returns a flat dict {ticker: {rank_pct, primary_score, ...}} for every ticker.
+        If False, returns only tickers above exit_rank_threshold (top 33%).
+
+    Returns
+    -------
+    dict of ticker → score data including rank_pct (0.0=worst, 1.0=best)
+    """
+    mkt, smb, hml = _load_ff_proxies(period="5y")
+    spy_df = yf.download("SPY", period="14mo", interval="1d", progress=False)
+    position_state = load_position_state()
+
+    long_scored  = _score_universe(CFG.long_universe,  "long",  mkt, smb, hml, spy_df, position_state)
+    short_scored = _score_universe(CFG.short_universe, "short", mkt, smb, hml, spy_df, position_state)
+
+    all_scored = long_scored + short_scored
+    if not all_scored:
+        return {}
+
+    # Separate ranking pools: residual momentum (Pool A) ranks above vol-adjusted (Pool B)
+    pool_a = [c for c in all_scored if c.get("residual_mom") is not None]
+    pool_b = [c for c in all_scored if c.get("residual_mom") is None]
+
+    pool_a.sort(key=lambda x: x["primary_score"], reverse=True)
+    pool_b.sort(key=lambda x: x["primary_score"], reverse=True)
+    combined = pool_a + pool_b
+    n = len(combined)
+
+    # Assign rank_pct: 1.0=best (rank 1), 0.0=worst (rank n)
+    result = {}
+    for rank_i, c in enumerate(combined):
+        ticker = c["ticker"]
+        rank_pct = (n - 1 - rank_i) / max(n - 1, 1)
+        c["rank_pct"] = round(rank_pct, 4)
+        c["rank"] = rank_i + 1
+        c["signal_pool"] = "residual" if c in pool_a else "vol_adjusted"
+        result[ticker] = c
+
+    if return_all:
+        return result
+
+    # Default: only tickers in top 33% (exit_rank_threshold)
+    threshold = CFG.exit_rank_threshold if hasattr(CFG, "exit_rank_threshold") else 0.33
+    return {t: d for t, d in result.items() if d.get("rank_pct", 0) >= (1.0 - threshold)}
+
+
 # ── Dual momentum ETF sleeve (supplement §5 ISA note) ────────────────────────
 # Run separately, manually, monthly. Not in the automated loop.
 # This is the tax-efficient core — run in an ISA, 2-4 trades/year.
