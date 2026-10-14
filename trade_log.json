@@ -26,6 +26,16 @@
   ],
   "regime": [
     {
+      "date": "2026-10-14",
+      "market_state_ok": true,
+      "vix_rank": 25.8,
+      "vix_secondary_block": false,
+      "n_long_candidates": 4,
+      "n_short_candidates": 0,
+      "size_scalar": 1.0,
+      "timestamp": "2026-10-14T13:02:09.903913"
+    },
+    {
       "date": "2026-10-13",
       "market_state_ok": true,
       "vix_rank": 15.9,
@@ -46,5 +56,5 @@
       "timestamp": "2026-10-12T23:43:12.994822"
     }
   ],
-  "last_updated": "2026-10-13T23:09:04.071752"
+  "last_updated": "2026-10-14T13:02:09.903938"
 }
