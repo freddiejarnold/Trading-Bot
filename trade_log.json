@@ -50,12 +50,12 @@
     {
       "date": "2026-10-28",
       "market_state_ok": true,
-      "vix_rank": 49.2,
+      "vix_rank": 48.4,
       "vix_secondary_block": false,
       "n_long_candidates": 4,
       "n_short_candidates": 0,
       "size_scalar": 1.0,
-      "timestamp": "2026-10-28T19:46:33.622363"
+      "timestamp": "2026-10-28T19:48:08.497888"
     },
     {
       "date": "2026-10-27",
@@ -178,5 +178,5 @@
       "timestamp": "2026-10-12T23:43:12.994822"
     }
   ],
-  "last_updated": "2026-10-28T19:46:33.622370"
+  "last_updated": "2026-10-28T19:48:08.497895"
 }
